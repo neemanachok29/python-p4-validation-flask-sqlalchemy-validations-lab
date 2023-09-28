@@ -1,32 +1,52 @@
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import validates
-db = SQLAlchemy()
+from sqlalchemy import MetaData
+from flask_migrate import Migrate
 
-class Author(db.Model):
-    __tablename__ = 'authors'
-    # Add validations and constraints 
+metadata = MetaData(naming_convention={
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+})
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+db = SQLAlchemy(metadata=metadata)
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+class Zookeeper(db.Model):
+    __tablename__ = 'zookeepers'
+
+class Animal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name= db.Column(db.String, unique=True, nullable=False)
-    phone_number = db.Column(db.String)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    name = db.Column(db.String(50), nullable=False)
+    species = db.Column(db.String(50), nullable=False)
+    zookeeper_id = db.Column(db.Integer, db.ForeignKey('zookeeper.id'))
+    enclosure_id = db.Column(db.Integer, db.ForeignKey('enclosure.id'))
+
+class Enclosure(db.Model):
+    __tablename__ = 'enclosures'
+    def __repr__(self):
+        return f"Animal(name='{self.name}', species='{self.species}')"
+
+
+class Zookeeper(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    birthday = db.Column(db.Date, nullable=False)
+    animals = db.relationship('Animal', backref='zookeeper')
 
     def __repr__(self):
-        return f'Author(id={self.id}, name={self.name})'
+        return f"Zookeeper(name='{self.name}', birthday='{self.birthday}')"
 
-class Post(db.Model):
-    __tablename__ = 'posts'
-    # Add validations and constraints 
+class Animal(db.Model):
+    __tablename__ = 'animals'
 
+class Enclosure(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String, nullable=False)
-    content = db.Column(db.String)
-    category = db.Column(db.String)
-    summary = db.Column(db.String)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
-
+    environment = db.Column(db.String(50), nullable=False)
+    open_to_visitors = db.Column(db.Boolean, nullable=False)
+    animals = db.relationship('Animal', backref='enclosure')
 
     def __repr__(self):
-        return f'Post(id={self.id}, title={self.title} content={self.content}, summary={self.summary})'
+        return f"Enclosure(environment='{self.environment}', open_to_visitors={self.open_to_visitors})"
